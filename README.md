@@ -5,14 +5,12 @@
 Repository này được thiết kế dành cho QA/Automation Engineer muốn xây dựng tư duy lập trình trong kiểm thử hiệu năng, làm chủ công cụ k6 trong kỷ nguyên Cloud Native và CI/CD.
 
 ---
-
 ## 📖 Table of Contents
 
-- [Về k6](#-về-k6)
-- [Kiến thức yêu cầu](#-kiến-thức-yêu-cầu-prerequisites)
-- [Lộ trình học tập](#-lộ-trình-học-tập)
-- [Capstone Project](#-capstone-project)
-
+- [Về k6](#ve-k6)
+- [Kiến thức yêu cầu](#kien-thuc-yeu-cau-prerequisites)
+- [Lộ trình học tập](#lo-trinh-hoc-tap)
+- [Capstone Project](#capstone-project)
 ---
 
 ## 📌 Quy ước link bài học
