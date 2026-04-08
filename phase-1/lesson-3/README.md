@@ -73,6 +73,7 @@ export default function () {
   http.get('[https://test.k6.io](https://test.k6.io)');
   sleep(1);
 }
+```
 
 # Phụ lục Chuyên sâu: Toàn cảnh về SLA, SLO, SLI và Cách thiết lập hiệu quả
 
