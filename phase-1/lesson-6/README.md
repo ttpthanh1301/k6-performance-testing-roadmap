@@ -98,6 +98,7 @@ export function teardown(data) {
   console.log(' [4] TEARDOWN STAGE: Dọn dẹp dữ liệu...');
 }
 ```
+<img width="1011" height="718" alt="image" src="https://github.com/user-attachments/assets/72cd72b4-36df-4e25-9dfe-e6f5ac1ef85b" />
 
 ---
 
