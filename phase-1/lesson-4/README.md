@@ -11,8 +11,7 @@ Sử dụng Homebrew:
 ```bash
 brew install k6
 ```
-
-###🪟 2. Cài đặt trên Windows
+### 🪟 2. Cài đặt trên Windows
 Cách 1: Dùng Winget (Khuyên dùng)
 
 ```bash
