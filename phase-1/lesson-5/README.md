@@ -59,7 +59,7 @@ JSON
     "**/*.js"
   ]
 }
-```bash
+```
 ✅ 4. Kiểm tra thành quả
 Bây giờ, bạn hãy tạo một file mới tên là script.js.
 
