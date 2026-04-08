@@ -60,9 +60,38 @@ JSON
   ]
 }
 ```
+
 ✅ 4. Kiểm tra thành quả
 Bây giờ, bạn hãy tạo một file mới tên là script.js.
 
 Gõ thử dòng chữ import http... Nếu bạn thấy VS Code tự động gợi ý cú pháp import http from 'k6/http'; và khi bạn gõ http. nó hiện ra các hàm như get, post, put... thì xin chúc mừng! Môi trường của bạn đã được thiết lập hoàn hảo.
 
 Việc có IntelliSense sẽ giúp bạn học k6 nhanh hơn gấp nhiều lần vì không phải lúc nào cũng cần mở tài liệu (Docs) ra xem hàm này cần truyền vào tham số gì.
+### 1. Extension của k6 trên VS Code làm được gì?
+Trên chợ ứng dụng của VS Code, có một extension chính thức tên là "k6 for Visual Studio Code" (ID: k6.k6 của Grafana Labs).
+Tuy nhiên, extension này chỉ cung cấp các nút bấm (Run, Pause) trên giao diện để bạn chạy kịch bản trực tiếp trên VS Code thay vì gõ lệnh trên Terminal.
+
+Đội ngũ kỹ sư của Grafana đã xác nhận rõ: Extension này không chứa bộ gợi ý code.
+<img width="1062" height="792" alt="image" src="https://github.com/user-attachments/assets/f13e8429-3042-46a0-8889-68743e881fc6" />
+
+
+
+### 2. Tại sao lại bắt buộc phải tải gói @types/k6?
+VS Code vốn rất thông minh với JavaScript, nhưng lõi của k6 lại chạy bằng Go (Golang). Vì vậy, VS Code "mù tịt" về các hàm của k6 (như http.get, check, sleep).
+
+Gói @types/k6 thực chất không chứa code chạy, mà nó chỉ là một cuốn "từ điển" để dạy cho VS Code biết các hàm của k6 viết như thế nào, tham số truyền vào ra sao. Việc dùng npm là cách chuẩn mực và nhanh nhất trên toàn cầu để tải cuốn từ điển này về.
+
+### 💡 "Cách lách" nếu bạn KHÔNG muốn cài Node.js hay dùng lệnh npm
+Nếu bạn cực kỳ ghét việc dùng lệnh npm hoặc không muốn cài Node.js vào máy tính, bạn có thể tự làm thủ công bằng cách tải trực tiếp cuốn từ điển đó về:
+
+Tạo một file tên là **k6.d.ts** ngay trong thư mục dự án của bạn (để cùng chỗ với file test).
+
+Copy toàn bộ nội dung từ điển tại link này (đây là mã nguồn gốc của gói @types/k6) và dán vào file đó:
+👉 Link GitHub - k6 type definitions
+
+Ở trên cùng của file script k6 (ví dụ script.js), bạn thêm dòng comment này vào dòng số 1:
+
+JavaScript
+/// <reference path="./k6.d.ts" />
+import http from 'k6/http';
+// ... VS Code sẽ bắt đầu gợi ý code cho bạn!
