@@ -29,6 +29,7 @@ Mở Terminal tại thư mục chứa file `hello-k6.js` và gõ lệnh chạy t
 ```bash
 k6 run --vus 1 --duration 5s hello-k6.js
 ```
+<img width="862" height="600" alt="image" src="https://github.com/user-attachments/assets/4557cad6-a4b9-44e6-acde-6604f390906c" />
 
 ---
 
