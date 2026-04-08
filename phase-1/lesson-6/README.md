@@ -87,7 +87,7 @@ export function setup() {
 // ==========================================
 export default function (data) {
   console.log(` [3] VU STAGE (User ${__VU}): Đang dùng token: ${data.authToken}`);
-  http.get('[https://test.k6.io](https://test.k6.io)');
+  http.get('https://test.k6.io');
   sleep(1);
 }
 
