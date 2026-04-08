@@ -7,5 +7,5 @@ export default function () {
   http.get("https://test.k6.io");
 
   // Tạm nghỉ 1 giây trước khi vòng lặp tiếp theo bắt đầu (Giả lập thao tác người dùng)
-  sleep(1);
-}
+    sleep(1);
+    }

@@ -19,9 +19,9 @@ export function setup() {
 // [3] VU STAGE (Chạy lặp lại liên tục)
 // ==========================================
 export default function (data) {
-  console.log(
-    ` [3] VU STAGE (User ${__VU}): Đang dùng token: ${data.authToken}`,
-  );
+    console.log(
+        ` [3] VU STAGE (User ${__VU}): Đang dùng token: ${data.authToken}`,
+    );
   http.get("https://test.k6.io");
   sleep(1);
 }
@@ -30,5 +30,5 @@ export default function (data) {
 // [4] TEARDOWN STAGE (Chạy 1 lần cuối cùng)
 // ==========================================
 export function teardown(data) {
-  console.log(" [4] TEARDOWN STAGE: Dọn dẹp dữ liệu...");
+    console.log(" [4] TEARDOWN STAGE: Dọn dẹp dữ liệu...");
 }
