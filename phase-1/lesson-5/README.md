@@ -87,7 +87,7 @@ Nếu bạn cực kỳ ghét việc dùng lệnh npm hoặc không muốn cài N
 Tạo một file tên là **k6.d.ts** ngay trong thư mục dự án của bạn (để cùng chỗ với file test).
 
 Copy toàn bộ nội dung từ điển tại link này (đây là mã nguồn gốc của gói @types/k6) và dán vào file đó:
-👉 Link GitHub - k6 type definitions
+👉 (Link GitHub - k6 type definitions)[https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/k6/index.d.ts]
 
 Ở trên cùng của file script k6 (ví dụ script.js), bạn thêm dòng comment này vào dòng số 1:
 
