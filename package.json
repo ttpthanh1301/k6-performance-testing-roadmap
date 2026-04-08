@@ -1,0 +1,21 @@
+{
+  "name": "k6-performance-testing-roadmap",
+  "version": "1.0.0",
+  "description": "> **A step-by-step learning roadmap for Performance Engineering using k6, transitioning from GUI-based tools (like JMeter) to a modern \"Everything as Code\" approach.**",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ttpthanh1301/k6-performance-testing-roadmap.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ttpthanh1301/k6-performance-testing-roadmap/issues"
+  },
+  "homepage": "https://github.com/ttpthanh1301/k6-performance-testing-roadmap#readme"
+}
