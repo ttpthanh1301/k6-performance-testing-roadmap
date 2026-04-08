@@ -17,7 +17,7 @@ import { sleep } from 'k6';
 // Kịch bản chính: Hàm default sẽ được k6 gọi liên tục
 export default function () {
   // Gửi một request GET đến một API test của k6
-  http.get('[https://test.k6.io](https://test.k6.io)');
+  http.get('https://test.k6.io');
   
   // Tạm nghỉ 1 giây trước khi vòng lặp tiếp theo bắt đầu (Giả lập thao tác người dùng)
   sleep(1); 
@@ -29,6 +29,7 @@ Mở Terminal tại thư mục chứa file `hello-k6.js` và gõ lệnh chạy t
 ```bash
 k6 run --vus 1 --duration 5s hello-k6.js
 ```
+<img width="862" height="600" alt="image" src="https://github.com/user-attachments/assets/4557cad6-a4b9-44e6-acde-6604f390906c" />
 
 ---
 
@@ -86,7 +87,7 @@ export function setup() {
 // ==========================================
 export default function (data) {
   console.log(` [3] VU STAGE (User ${__VU}): Đang dùng token: ${data.authToken}`);
-  http.get('[https://test.k6.io](https://test.k6.io)');
+  http.get('https://test.k6.io');
   sleep(1);
 }
 
