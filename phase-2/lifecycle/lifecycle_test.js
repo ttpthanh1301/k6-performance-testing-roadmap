@@ -5,25 +5,28 @@ import { check, sleep } from "k6";
 // 1. INIT STAGE (Khởi tạo máy ảo)
 // ==========================================
 export const options = {
-  vus: 10,
-  duration: "5s",
+  vus: 3, // Chạy 3 User ảo
+  duration: "3s", // Chạy trong 3 giây
 };
-// Đọc file tĩnh ở đây: const myData = JSON.parse(open('./data.json'));
 
 // ==========================================
-// 2. SETUP STAGE (Chạy 1 lần duy nhất)
+// 2. SETUP STAGE (Chạy ĐÚNG 1 LẦN lấy Token)
 // ==========================================
 export function setup() {
-  console.log("--- [SETUP]: Đang lấy Token ---");
+  console.log("--- [SETUP]: Đang gọi API Đăng nhập lấy JWT Token ---");
 
-  // Giả lập gọi API lấy Token
-  const loginRes = http.get("https://test-api.k6.io/public/crocodiles/1/");
+  // Gửi POST request kèm tài khoản test có sẵn của hệ thống
+  const loginRes = http.post("https://dummyjson.com/auth/login", {
+    username: "emilys",
+    password: "emilyspass",
+  });
 
-  // Trích xuất dữ liệu (Giả sử đây là Token an toàn)
-  const fakeToken = "Bearer my-super-secret-token";
+  // Trích xuất Token thật từ cục JSON trả về
+  const realToken = loginRes.json("token");
+  console.log("🔑 Đã lấy được Token: " + realToken.substring(0, 20) + "...");
 
-  // Return một object chứa dữ liệu để chia sẻ cho toàn bộ VUs
-  return { authToken: fakeToken, crocId: 1 };
+  // Return object chứa Token để chia sẻ cho toàn bộ VUs
+  return { authToken: realToken };
 }
 
 // ==========================================
@@ -32,27 +35,25 @@ export function setup() {
 export default function (data) {
   // Nhận 'data' từ kết quả return của setup()
   const params = {
-    headers: { Authorization: data.authToken },
+    headers: {
+      Authorization: `Bearer ${data.authToken}`, // Gắn Token vào Header
+      "Content-Type": "application/json",
+    },
   };
 
-  // 10 VUs đều dùng chung Token mà không cần phải Login lại
-  const res = http.get(
-    `https://test-api.k6.io/public/crocodiles/${data.crocId}/`,
-    params,
-  );
+  // Gọi API yêu cầu Token (Nếu không có Token sẽ bị báo lỗi 401 Unauthorized)
+  const res = http.get("https://dummyjson.com/auth/me", params);
 
   check(res, {
-    "Status là 200": (r) => r.status === 200,
+    "Truy cập dữ liệu bảo mật thành công (Status 200)": (r) => r.status === 200,
   });
 
   sleep(1); // Giả lập người dùng đọc trang trong 1s
 }
 
 // ==========================================
-// 4. TEARDOWN STAGE (Chạy 1 lần duy nhất)
+// 4. TEARDOWN STAGE (Chạy 1 lần cuối cùng)
 // ==========================================
 export function teardown(data) {
-  console.log("--- [TEARDOWN]: Dọn dẹp dữ liệu ---");
-  // Dùng lại data từ setup để biết cần xóa cái gì
-  // http.del(`https://test-api.k6.io/public/crocodiles/${data.crocId}/`, null, { headers: { 'Authorization': data.authToken } });
+  console.log(" [4] TEARDOWN STAGE: Dơn dẹp dữ liệu...");
 }
