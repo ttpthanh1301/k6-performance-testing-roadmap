@@ -71,9 +71,7 @@ export function setup() {
   console.log("--- [SETUP]: Đang lấy Token ---");
 
   // Giả lập gọi API lấy Token
-  const loginRes = http.get(
-    "[https://test-api.k6.io/public/crocodiles/1/](https://test-api.k6.io/public/crocodiles/1/)",
-  );
+  const loginRes = http.get("https://test-api.k6.io/public/crocodiles/1/");
 
   // Trích xuất dữ liệu (Giả sử đây là Token an toàn)
   const fakeToken = "Bearer my-super-secret-token";
@@ -113,7 +111,7 @@ export function teardown(data) {
   // http.del(`https://test-api.k6.io/public/crocodiles/${data.crocId}/`, null, { headers: { 'Authorization': data.authToken } });
 }
 ```
-
+![alt text](image-1.png)
 ### ⚠️ 4. Những Anti-Pattern (Lỗi thiết kế) cần tuyệt đối tránh
 
 **Biến đếm chung "ảo tưởng" (Global Counters):**
