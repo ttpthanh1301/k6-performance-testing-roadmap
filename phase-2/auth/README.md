@@ -24,7 +24,8 @@ JWT là một chuỗi mã hóa (thường có 3 phần ngăn cách bởi dấu c
 
 _💡 Lợi thế của k6:_ k6 hỗ trợ xử lý luồng OAuth2 này cực kỳ mượt mà thông qua hàm `setup()`.
 
----
+<img width="565" height="313" alt="image" src="https://github.com/user-attachments/assets/b69eec10-01c8-4b85-8b8d-3862adbc44bb" />
+
 
 ### 🚨 2. "Cú lừa" lớn nhất khi test OAuth2: Content-Type
 
@@ -146,3 +147,77 @@ const requestBody = {
     client_secret: __ENV.CLIENT_SECRET,
   };
 ```
+### 🏗️ 6. JWT Token Pattern (Best Practices - 95% dự án áp dụng)
+Đây là mô hình chuẩn hóa (Pattern) giúp bạn xử lý các dự án sử dụng Bearer Token một cách chuyên nghiệp, sạch sẽ và hạn chế tối đa lỗi kịch bản.
+
+## 🛠️ Sơ đồ tư duy (Workflow)
+_setup()_: Login đúng 1 lần duy nhất để lấy access_token.
+
+_return {token}_: Đóng gói token và pass xuống cho toàn bộ Virtual Users.
+
+_default(data)_: Mỗi VU nhận token từ tham số data.
+
+_authHeaders_: Tái sử dụng token cho mọi request cần bảo mật.
+```bash
+import http from 'k6/http';
+import { check, sleep } from 'k6';
+import { exec } from 'k6/execution';
+
+// Sử dụng biến môi trường để linh hoạt thay đổi Server test
+const BASE_URL = __ENV.BASE_URL || 'https://api.example.com';
+
+export function setup() {
+  const url = `${BASE_URL}/auth/login`;
+  
+  // Dùng JSON.stringify nếu API của bạn yêu cầu nhận JSON (Phổ biến ở VN)
+  const payload = JSON.stringify({
+    email: __ENV.EMAIL || 'qa@example.com',
+    password: __ENV.PASSWORD || 'password123',
+  });
+
+  const params = {
+    headers: { 'Content-Type': 'application/json' },
+  };
+
+  const res = http.post(url, payload, params);
+
+  // Kiểm tra Login có thành công không
+  const isOk = check(res, { 'Login thành công (200)': (r) => r.status === 200 });
+
+  // 🛡️ BẢO VỆ: Nếu Login fail, dừng toàn bộ bài test ngay lập tức (Fail-Fast)
+  // Tránh việc hàng ngàn VU chạy tiếp gây ra lỗi 401 giả tạo hàng loạt
+  if (!isOk) {
+    exec.test.abort(`❌ SETUP FAILED: Status ${res.status}. Vui lòng kiểm tra lại tài khoản!`);
+  }
+
+  // Trích xuất token và truyền xuống giai đoạn sau
+  return { token: res.json('access_token') };
+}
+
+export default function (data) {
+  // Gom Headers vào một object params để code gọn gàng, dễ quản lý
+  const params = {
+    headers: {
+      'Authorization': `Bearer ${data.token}`,
+      'Content-Type': 'application/json',
+    },
+  };
+
+  const res = http.get(`${BASE_URL}/user/profile`, params);
+
+  // Assertion: Đảm bảo không chỉ status 200 mà dữ liệu trả về phải đúng
+  check(res, {
+    'Truy cập Profile OK': (r) => r.status === 200,
+    'Dữ liệu có chứa tên User': (r) => r.json('name') !== undefined,
+  });
+
+  sleep(1);
+}
+```
+**🌟 3 Điểm "Vàng" trong Pattern này:**
+_Tính linh hoạt (Environment Variables)_: Bạn có thể thay đổi môi trường test cực nhanh qua Terminal:
+k6 run -e BASE_URL=https://staging-api.com -e EMAIL=admin@test.com script.js
+
+_Chiến thuật Fail-Fast_: Sử dụng exec.test.abort() để bảo vệ hệ thống. Nếu không đăng nhập được, k6 sẽ ngừng bắn request ngay lập tức, giúp báo cáo sạch sẽ và không làm nghẽn server vô ích.
+
+_Quản lý tham số chuyên nghiệp_: Thay vì đặt tên biến là headers, ta dùng params. Cách này giúp bạn dễ dàng mở rộng thêm các cấu hình khác của k6 như timeout, tags, hay cookies sau này.
