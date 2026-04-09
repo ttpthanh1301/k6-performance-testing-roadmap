@@ -215,6 +215,7 @@ export default function (data) {
 }
 ```
 **🌟 3 Điểm "Vàng" trong Pattern này:**
+
 _Tính linh hoạt (Environment Variables)_: Bạn có thể thay đổi môi trường test cực nhanh qua Terminal:
 k6 run -e BASE_URL=https://staging-api.com -e EMAIL=admin@test.com script.js
 
