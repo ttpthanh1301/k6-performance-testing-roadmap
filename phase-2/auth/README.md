@@ -217,7 +217,9 @@ export default function (data) {
 **🌟 3 Điểm "Vàng" trong Pattern này:**
 
 _Tính linh hoạt (Environment Variables)_: Bạn có thể thay đổi môi trường test cực nhanh qua Terminal:
+```bash
 k6 run -e BASE_URL=https://staging-api.com -e EMAIL=admin@test.com script.js
+```
 
 _Chiến thuật Fail-Fast_: Sử dụng exec.test.abort() để bảo vệ hệ thống. Nếu không đăng nhập được, k6 sẽ ngừng bắn request ngay lập tức, giúp báo cáo sạch sẽ và không làm nghẽn server vô ích.
 
