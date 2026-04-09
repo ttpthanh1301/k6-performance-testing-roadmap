@@ -118,7 +118,9 @@ export function teardown(data) {
 
 **Biến đếm chung "ảo tưởng" (Global Counters):**
 Nếu bạn khai báo `let` `count = 0`; ở Init Stage và trong VU Stage bạn viết code count++, bạn sẽ hy vọng đếm được tổng số request? Sai! Vì mỗi VU là một máy ảo riêng biệt, nên VU nào cũng tự thấy count = 1. Đừng bao giờ dùng biến global để chia sẻ trạng thái thay đổi giữa các VUs.
+
 **Sửa đổi dữ liệu trả về từ Setup:**
 Dữ liệu data truyền từ `setup()` xuống default function được k6 thiết kế ở dạng chỉ đọc (read-only) hoặc copy. Việc cố tình thay đổi giá trị của nó bên trong vòng lặp VU sẽ không có tác dụng lan truyền tới các VU khác.
+
 **Phụ thuộc quá nhiều vào Setup:**
 Nếu code trong `setup()` bị lỗi (VD: server từ chối đăng nhập, sập mạng), k6 sẽ đánh rớt (Abort) toàn bộ bài test ngay lập tức mà không chạy tiếp vào VU Stage. Do đó, hãy cẩn thận thêm logic kiểm tra (try/catch hoặc if/else) khi code phần setup.
