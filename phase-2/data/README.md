@@ -177,16 +177,23 @@ export default function() {
 ### 📚 Nguồn tham khảo (References)
 
 **🔹 Tài liệu k6 chính thức**
+
 k6 Data Parameterization Guide - Tổng quan về tham số hóa dữ liệu.
+
 https://grafana.com/docs/k6/latest/examples/data-parameterization/
+
 SharedArray API Documentation - Kỹ thuật tối ưu bộ nhớ.
+
 https://grafana.com/docs/k6/latest/javascript-api/k6-data/sharedarray/
 
 k6 Execution Context - Tìm hiểu về vu.idInTest và scenario.iterationInTest.
+
 https://grafana.com/docs/k6/latest/javascript-api/k6-execution/
+
 **🔹 Bài viết chuyên sâu & Thư viện**
 Performance Testing with Generated Data (k6 Blog) - Bài viết gốc về Acme Corp và Faker.js.
+
 https://dev.to/k6/performance-testing-with-generated-data-using-k6-and-faker-2e
-Load Testing with Faker.js and CSV Files - Cách kết hợp linh hoạt giữa file tĩnh và dữ liệu động.
+
 Papa Parse Library - Thư viện parse CSV tiêu chuẩn cho k6.
 https://jslib.k6.io/papaparse/5.1.1/index.js
