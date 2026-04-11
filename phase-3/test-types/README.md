@@ -1,296 +1,414 @@
-# 🟠 Phase 3: Chiến lược Test & Phân tích (Realistic Test Design)
+# 🧪 Bài 3.1: Các loại Test — Smoke / Load / Stress / Spike / Soak
 
 > **Mục tiêu bài học:**
-> - Phân biệt và làm chủ **5 loại hình kiểm thử hiệu năng** kinh điển
-> - Biết cách cấu hình `options` trong k6 để mô phỏng chính xác các kịch bản thực tế
-> - Xây dựng quy trình phân tích kết quả bài bản sau khi test
-> - Hiểu khi nào nên dùng loại test nào trong dự án thực tế
+>
+> - Phân biệt **5 loại hình kiểm thử hiệu năng** kinh điển và biết khi nào dùng loại nào
+> - Hiểu cấu trúc `stages` và cách mô phỏng từng kịch bản tải
+> - Nắm được các chỉ số cần quan sát cho từng loại test
+>
+> **Lưu ý về lộ trình:**
+>
+> - Bài này tập trung vào **tư duy chiến lược** và cấu hình cơ bản với `stages`
+> - **Executors nâng cao** (thay thế `stages`) → học ở **Bài 3.2**
+> - **Thresholds chi tiết** (SLO / Pass-Fail) → học ở **Bài 3.3**
+> - **Custom Metrics** → học ở **Bài 3.4**
 
 ---
 
 ## 🧠 1. Tại sao cần nhiều loại chiến lược Test?
 
-Mỗi hệ thống có một đặc thù riêng:
+Một câu hỏi phổ biến của người mới: _"Cứ chạy nhiều VU nhất có thể không phải tốt nhất sao?"_
 
-- Trang **tin tức** → lượng truy cập đều đặn, ổn định cả ngày
-- Trang **thương mại điện tử** → có đợt Flash Sale tăng vọt đột ngột
-- Hệ thống **ngân hàng** → cần chạy bền bỉ 24/7 không được rò rỉ bộ nhớ
-
-Áp dụng đúng loại hình test giúp bạn tìm ra đúng "bệnh" của hệ thống thay vì chỉ "kiểm tra cho có".
+**Không.** Mỗi loại lỗi hiệu năng cần một loại test khác nhau để phát hiện:
 
 ```
-Câu hỏi cần trả lời              →  Loại Test phù hợp
-──────────────────────────────────────────────────────
-Script có chạy đúng không?        →  Smoke Test
-Hệ thống có đáp ứng SLA không?   →  Load Test
-Giới hạn chịu đựng là bao nhiêu? →  Stress Test
-Có chịu được Flash Sale không?    →  Spike Test
-Có bị rò rỉ bộ nhớ không?        →  Soak Test
+Vấn đề cần tìm                        →  Loại Test phù hợp
+──────────────────────────────────────────────────────────
+Script có chạy đúng logic không?       →  Smoke Test
+Hệ thống có đáp ứng SLA không?        →  Load Test
+Giới hạn chịu đựng tối đa là bao nhiêu? →  Stress Test
+Có chịu được Flash Sale đột ngột không? →  Spike Test
+Có bị rò rỉ bộ nhớ sau vài giờ không? →  Soak Test
 ```
+
+**Ví dụ thực tế:**
+
+- Trang **tin tức** → lượng truy cập đều đặn → cần Load Test + Soak Test
+- Sàn **thương mại điện tử** → Flash Sale bất ngờ → cần Spike Test
+- Hệ thống **ngân hàng** → chạy 24/7 không được sập → cần Stress Test + Soak Test
 
 ---
 
-## 🛠️ 2. Tổng quan 5 loại kịch bản kinh điển
+## 📊 2. Tổng quan 5 loại Test
 
-| Loại Test | Mục đích chính | VUs | Thời gian |
-|---|---|---|---|
-| **Smoke Test** | Kiểm tra script chạy thông suốt | 1–5 | 1–2 phút |
-| **Load Test** | Kiểm tra hệ thống ở mức tải kỳ vọng (SLA) | Mức mục tiêu | 20–30 phút |
-| **Stress Test** | Tìm "điểm gãy" (Breaking Point) | Vượt mức chịu đựng | 30–60 phút |
-| **Spike Test** | Mô phỏng Flash Sale, tải đột biến | Tăng vọt rồi giảm ngay | 5–15 phút |
-| **Soak Test** | Tìm rò rỉ bộ nhớ, kiểm tra độ bền | Tải trung bình | Vài giờ đến vài ngày |
+| Loại Test     | Mục đích chính                     | VUs            | Thời gian chạy     |
+| ------------- | ---------------------------------- | -------------- | ------------------ |
+| 🟢 **Smoke**  | Xác nhận script chạy đúng          | 1–5            | 1–2 phút           |
+| 🔵 **Load**   | Kiểm tra hệ thống ở mức tải SLA    | Mức mục tiêu   | 20–30 phút         |
+| 🔴 **Stress** | Tìm điểm gãy (Breaking Point)      | Vượt mức SLA   | 30–60 phút         |
+| ⚡ **Spike**  | Mô phỏng tải đột biến (Flash Sale) | Tăng vọt nhanh | 10–20 phút         |
+| 🌙 **Soak**   | Tìm rò rỉ bộ nhớ, kiểm tra độ bền  | Tải trung bình | Vài giờ – vài ngày |
 
 ---
 
-## 💻 3. Cấu hình k6 cho từng kịch bản
+## 💻 3. Cấu hình từng loại Test
 
-### 3.1. 🟢 Smoke Test — Kiểm tra nhanh trước khi chiến
+> 💡 **Ghi chú:** Các ví dụ dưới đây dùng `stages` — cách đơn giản và trực quan nhất để bắt đầu. Bài **3.2 Executors & Scenarios** sẽ dạy cách kiểm soát chính xác và linh hoạt hơn.
 
-**Khi nào dùng:** Chạy bắt buộc trước mọi bài test lớn. Phát hiện lỗi logic kịch bản với chi phí thấp nhất.
+---
+
+### 3.1. 🟢 Smoke Test — "Khởi động trước khi chiến"
+
+**Mục đích:** Kiểm tra script có chạy đúng logic không với tải tối thiểu. Phát hiện lỗi code rẻ nhất có thể.
+
+**Quy tắc bắt buộc:** Luôn chạy Smoke Test **trước mọi bài test khác**.
 
 ```javascript
+import http from "k6/http";
+import { check, sleep } from "k6";
+
 export const options = {
-  vus: 3,
-  duration: '1m',
+  vus: 3, // Chỉ 3 VU — đủ để kiểm tra logic, không tạo tải thật
+  duration: "1m", // Chạy 1 phút là đủ
   thresholds: {
-    http_req_failed: ['rate < 0.01'],   // Gần như không được có lỗi
-    http_req_duration: ['p(95) < 500'], // Phản hồi dưới 500ms
+    http_req_failed: ["rate < 0.01"], // Gần như không được có lỗi
+    http_req_duration: ["p(95) < 500"], // Phản hồi dưới 500ms
   },
 };
+
+export default function () {
+  const res = http.get("https://api.example.com/products");
+
+  check(res, {
+    "status 200": (r) => r.status === 200,
+    "body không rỗng": (r) => r.body.length > 0,
+    "có trường data": (r) => r.json().data !== undefined,
+  });
+
+  sleep(1);
+}
 ```
 
-> ✅ **Quy tắc:** Nếu Smoke Test FAIL → dừng lại, sửa script trước. Đừng bao giờ chạy Load/Stress Test khi Smoke Test chưa PASS.
+**Smoke Test PASS khi:**
+
+- ✅ Tất cả `check()` đều xanh
+- ✅ Không có lỗi HTTP (4xx, 5xx)
+- ✅ Logic Correlation (lấy token, parse JSON) hoạt động đúng
+
+> ❌ **Smoke Test FAIL → DỪNG LẠI.** Không bao giờ chạy Load/Stress Test khi Smoke Test chưa PASS. Bạn sẽ lãng phí hàng giờ test với một script bị hỏng.
 
 ---
 
-### 3.2. 🔵 Load Test — Kiểm tra tải tiêu chuẩn (SLA)
+### 3.2. 🔵 Load Test — "Kiểm tra đúng cam kết SLA"
 
-**Khi nào dùng:** Kiểm tra hệ thống có đáp ứng được mức tải bình thường cam kết với khách hàng (SLA) không.
+**Mục đích:** Xác nhận hệ thống hoạt động ổn định ở mức tải bình thường đã cam kết với khách hàng.
+
+**Cấu trúc 3 giai đoạn bắt buộc:**
+
+```
+Ramp-up   →  Sustain  →  Ramp-down
+(tăng dần)   (giữ ổn định)  (giảm dần)
+```
 
 ```javascript
+import http from "k6/http";
+import { sleep } from "k6";
+
 export const options = {
   stages: [
-    { duration: '5m', target: 100 },  // Ramp-up: Tăng dần lên 100 VUs
-    { duration: '10m', target: 100 }, // Sustain: Giữ ổn định 100 VUs
-    { duration: '5m', target: 0 },    // Ramp-down: Giảm dần về 0
+    { duration: "5m", target: 100 }, // Ramp-up: tăng dần lên 100 VUs
+    { duration: "10m", target: 100 }, // Sustain: giữ ổn định 100 VUs
+    { duration: "5m", target: 0 }, // Ramp-down: giảm về 0
   ],
   thresholds: {
-    http_req_duration: ['p(95) < 1000', 'p(99) < 2000'],
-    http_req_failed: ['rate < 0.05'],  // Tỉ lệ lỗi dưới 5%
+    http_req_duration: ["p(95) < 1000", "p(99) < 2000"],
+    http_req_failed: ["rate < 0.05"],
   },
 };
+
+export default function () {
+  http.get("https://api.example.com/products");
+  sleep(1);
+}
 ```
 
-**Kết quả cần đạt:**
-- `p(95) < 1000ms` — 95% request phải phản hồi dưới 1 giây
-- Error rate < 5% trong suốt phase Sustain
+**Timeline:**
+
+```
+VUs
+100 │         ┌──────────────┐
+    │        /               \
+ 50 │       /                 \
+    │      /                   \
+  0 └──────────────────────────────── Thời gian
+    0    5m      15m           20m
+         ↑        ↑             ↑
+      Ramp-up  Sustain      Ramp-down
+```
+
+**Câu hỏi Load Test cần trả lời:**
+
+- `p(95)` có nằm dưới ngưỡng SLA suốt phase Sustain không?
+- Error rate có dưới 5% không?
+- RPS có ổn định không hay dao động bất thường?
+
+> 💡 **Tại sao cần Ramp-up?** Nếu đẩy 100 VU ngay lập tức, server bị "sốc tải" — connection pool chưa kịp khởi tạo, cache chưa warm-up → kết quả bị sai lệch. Ramp-up cho hệ thống thời gian "khởi động" như trong thực tế.
 
 ---
 
-### 3.3. 🔴 Stress Test — Tìm điểm gãy (Breaking Point)
+### 3.3. 🔴 Stress Test — "Tìm điểm gãy"
 
-**Khi nào dùng:** Cần biết hệ thống "gãy" ở mức tải nào để lên kế hoạch scale hạ tầng.
+**Mục đích:** Đẩy hệ thống vượt qua giới hạn bình thường để biết **ở mức tải nào thì bắt đầu gãy** — từ đó lên kế hoạch scale hạ tầng.
 
 ```javascript
+import http from "k6/http";
+import { sleep } from "k6";
+
 export const options = {
   stages: [
-    { duration: '2m', target: 100 },  // Baseline bình thường
-    { duration: '5m', target: 100 },
-    { duration: '2m', target: 200 },  // Tăng mức 1
-    { duration: '5m', target: 200 },
-    { duration: '2m', target: 300 },  // Tăng mức 2
-    { duration: '5m', target: 300 },
-    { duration: '2m', target: 500 },  // Đẩy lên cực hạn
-    { duration: '5m', target: 500 },
-    { duration: '5m', target: 0 },    // Ramp-down để quan sát hồi phục
+    // Giai đoạn 1: Baseline bình thường
+    { duration: "2m", target: 100 },
+    { duration: "5m", target: 100 },
+
+    // Giai đoạn 2: Tăng dần từng bước
+    { duration: "2m", target: 200 },
+    { duration: "5m", target: 200 },
+
+    { duration: "2m", target: 300 },
+    { duration: "5m", target: 300 },
+
+    // Giai đoạn 3: Đẩy lên cực hạn
+    { duration: "2m", target: 500 },
+    { duration: "5m", target: 500 },
+
+    // Giai đoạn 4: Ramp-down — quan sát hệ thống có tự hồi phục không
+    { duration: "5m", target: 0 },
   ],
   thresholds: {
-    // Không đặt ngưỡng cứng — mục tiêu là quan sát điểm gãy
-    http_req_duration: ['p(99) < 5000'],
+    // Mục tiêu là quan sát điểm gãy — không đặt ngưỡng quá cứng
+    http_req_duration: ["p(99) < 5000"],
   },
 };
+
+export default function () {
+  http.get("https://api.example.com/products");
+  sleep(1);
+}
 ```
 
-> 💡 **Bổ sung — Điều cần quan sát trong Stress Test:**
-> - Ở mức tải nào thì `p(95)` bắt đầu tăng vọt?
-> - Error rate bắt đầu leo thang từ bao nhiêu VUs?
-> - Sau khi dừng test, hệ thống có tự phục hồi không (self-healing)?
+**Timeline:**
+
+```
+VUs
+500 │                              ┌────────┐
+300 │               ┌────────┐    /         \
+200 │      ┌─────┐ /         \  /            \
+100 │ ┌──┐/       /           \/              \
+    └─────────────────────────────────────────── Thời gian
+                                                  (30 phút)
+```
+
+**3 điều cần ghi lại sau Stress Test:**
+
+| Điều cần ghi lại               | Ý nghĩa                     |
+| ------------------------------ | --------------------------- |
+| VU bắt đầu có lỗi              | Breaking Point của hệ thống |
+| VU mà `p(95)` tăng vọt         | Điểm bắt đầu degradation    |
+| Thời gian hệ thống tự hồi phục | Khả năng self-healing       |
+
+> ⚠️ **Không nên đặt Threshold cứng cho Stress Test.** Mục tiêu là **quan sát**, không phải Pass/Fail. Nếu đặt ngưỡng và test FAIL ngay từ đầu, bạn không thu thập được dữ liệu về điểm gãy.
 
 ---
 
-### 3.4. ⚡ Spike Test — Mô phỏng Flash Sale / Event bất ngờ
+### 3.4. ⚡ Spike Test — "Mô phỏng Flash Sale"
 
-**Khi nào dùng:** Trước các sự kiện lớn (Black Friday, ra mắt sản phẩm, livestream có mã giảm giá).
+**Mục đích:** Kiểm tra hệ thống có sống sót qua đợt tải tăng vọt **đột ngột** không, và có tự phục hồi sau đó không.
+
+**Thực tế cần mô phỏng:** Người dùng ùa vào trong vài giây khi Flash Sale bắt đầu, rồi giảm nhanh sau đó.
 
 ```javascript
+import http from "k6/http";
+import { sleep } from "k6";
+
 export const options = {
   stages: [
-    { duration: '2m', target: 50 },    // Nền: Tải bình thường
-    { duration: '10s', target: 1000 }, // BÙNG NỔ: Tăng vọt lên 1000 VUs
-    { duration: '3m', target: 1000 },  // Duy trì đỉnh
-    { duration: '10s', target: 50 },   // Giảm nhiệt đột ngột
-    { duration: '2m', target: 50 },    // Quan sát hệ thống hồi phục
-    { duration: '1m', target: 0 },
+    { duration: "2m", target: 50 }, // Nền: Tải bình thường
+    { duration: "10s", target: 1000 }, // ⚡ BÙN NỔ: tăng vọt lên 1000 VUs trong 10 giây
+    { duration: "3m", target: 1000 }, // Duy trì đỉnh
+    { duration: "10s", target: 50 }, // Giảm nhiệt đột ngột
+    { duration: "3m", target: 50 }, // ← Quan sát hệ thống hồi phục về mức nền
+    { duration: "1m", target: 0 },
   ],
   thresholds: {
-    // Trong giai đoạn spike, chấp nhận response chậm hơn
-    http_req_duration: ['p(95) < 5000'],
-    http_req_failed: ['rate < 0.10'],  // Cho phép lỗi tối đa 10%
+    http_req_duration: ["p(95) < 5000"], // Chấp nhận chậm hơn trong spike
+    http_req_failed: ["rate < 0.10"], // Cho phép lỗi tối đa 10% lúc đỉnh
   },
 };
+
+export default function () {
+  http.get("https://api.example.com/products");
+  sleep(1);
+}
 ```
 
-> ⚠️ **Lưu ý thực tế:** Trong Spike Test, mục tiêu không phải là "không có lỗi" mà là hệ thống phải **tự phục hồi** sau khi spike kết thúc. Nếu lỗi kéo dài sau spike — đó là vấn đề nghiêm trọng.
+**Timeline:**
+
+```
+VUs
+1000│        ┌──────┐
+    │        |      |
+    │       /        \
+ 50 │──────/          \──────────
+    └──────────────────────────── Thời gian
+    0   2m   2m10s  5m10s  5m20s  8m20s
+              ↑                ↑
+           Spike           Phục hồi
+```
+
+**Spike Test PASS khi:**
+
+- ✅ Hệ thống không sập hoàn toàn trong lúc spike
+- ✅ Sau khi spike kết thúc, error rate trở về < 1% trong vòng 2-3 phút
+- ✅ `p(95)` trở về mức bình thường sau khi giảm tải
+
+> ⚠️ **Lỗi kéo dài sau spike = vấn đề nghiêm trọng.** Đây là dấu hiệu hệ thống không có khả năng tự phục hồi (no self-healing) — cần xem lại connection pool, auto-scaling, circuit breaker.
 
 ---
 
-### 3.5. 🌙 Soak Test — Kiểm tra độ bền & Memory Leak
+### 3.5. 🌙 Soak Test — "Kiểm tra độ bền"
 
-**Khi nào dùng:** Phát hiện lỗi chỉ xuất hiện sau thời gian dài: rò rỉ bộ nhớ, connection pool cạn kiệt, log file đầy disk.
+**Mục đích:** Phát hiện các lỗi **chỉ xuất hiện sau thời gian dài** mà các loại test ngắn không thể tìm thấy.
+
+**Loại lỗi Soak Test tìm được:**
+
+| Lỗi                          | Biểu hiện                       |
+| ---------------------------- | ------------------------------- |
+| **Memory Leak**              | RAM tăng liên tục, không giảm   |
+| **Connection Pool cạn kiệt** | Lỗi tăng dần sau vài giờ        |
+| **Log file đầy disk**        | Lỗi ghi file sau N giờ          |
+| **Session / Token expire**   | Lỗi auth sau thời gian dài      |
+| **Database connection leak** | Timeout tăng dần theo thời gian |
 
 ```javascript
+import http from "k6/http";
+import { sleep } from "k6";
+
 export const options = {
   stages: [
-    { duration: '5m', target: 50 },   // Warm-up
-    { duration: '8h', target: 50 },   // Chạy xuyên màn đêm
-    { duration: '5m', target: 0 },    // Cool-down
+    { duration: "5m", target: 50 }, // Warm-up nhẹ nhàng
+    { duration: "8h", target: 50 }, // Duy trì 50 VU xuyên suốt — chạy qua đêm
+    { duration: "5m", target: 0 }, // Cool-down
   ],
   thresholds: {
-    // Ngưỡng phải ổn định sau 8 tiếng — nếu p(95) tăng dần → Memory Leak
-    http_req_duration: ['p(95) < 2000'],
-    http_req_failed: ['rate < 0.01'],
+    // Ngưỡng PHẢI ổn định sau 8 tiếng
+    // Nếu p(95) tăng dần dù VU không đổi → Memory Leak
+    http_req_duration: ["p(95) < 2000"],
+    http_req_failed: ["rate < 0.01"],
   },
 };
+
+export default function () {
+  http.get("https://api.example.com/products");
+  sleep(1);
+}
 ```
 
-> 💡 **Dấu hiệu Memory Leak khi phân tích Soak Test:**
-> - `p(95)` tăng dần theo thời gian dù không thêm VU
-> - RAM của server tăng liên tục, không giảm
-> - Số lỗi bắt đầu xuất hiện sau vài giờ dù đầu test bình thường
+**Cách đọc kết quả Soak Test:**
+
+```
+p(95) theo thời gian:
+
+✅ Hệ thống ổn định:
+200ms ─────────────────────────────────── (phẳng)
+
+⚠️ Memory Leak:
+      200ms ──────────/─────────/────────/ (tăng dần)
+
+❌ Nghiêm trọng — Connection Pool cạn:
+      200ms ──────────────────────────╱ (tăng vọt đột ngột sau N giờ)
+```
+
+> 💡 **Mẹo thực tế:** Chạy Soak Test vào **tối thứ Sáu** — sáng thứ Hai có kết quả 60 tiếng. Dùng Grafana Dashboard (học ở Bài 3.5) để theo dõi real-time và nhận alert nếu có bất thường.
 
 ---
 
-## 🔍 4. Quy trình Phân tích sau khi Test
-
-Sau khi chạy xong, hãy trả lời **4 câu hỏi** sau theo thứ tự:
-
-### Câu 1 — Response Time có ổn định không?
+## 🔄 4. Quy trình thực hành — Chạy theo đúng thứ tự này
 
 ```
-Chỉ số cần xem: http_req_duration (p50, p95, p99)
+Bước 1 ─ Smoke Test (1–2 phút)
+    └─ Script PASS? → Tiếp tục
+    └─ Script FAIL? → Dừng, sửa script
 
-✅ Tốt    : p(95) ổn định trong suốt phase Sustain
-⚠️ Cảnh báo: p(95) tăng dần theo thời gian (dù VUs không đổi)
-❌ Nghiêm trọng: p(99) vượt quá SLA đã cam kết
-```
+Bước 2 ─ Load Test (20–30 phút)
+    └─ SLA đạt? → Tiếp tục
+    └─ SLA không đạt? → Tìm bottleneck (Bài 3.5), tối ưu rồi test lại
 
-### Câu 2 — Error Rate ở mức nào?
+Bước 3 ─ Stress Test (30–60 phút)
+    └─ Ghi lại Breaking Point
+    └─ Lên kế hoạch scale hạ tầng
 
-```
-Chỉ số cần xem: http_req_failed
+Bước 4 ─ Spike Test (10–20 phút)
+    └─ Chạy trước các sự kiện lớn (Black Friday, ra mắt tính năng)
 
-✅ Tốt    : < 1% ở Load Test bình thường
-⚠️ Cảnh báo: 1–5% — cần điều tra nguyên nhân
-❌ Nghiêm trọng: > 5% — hệ thống không đáp ứng được SLA
-```
-
-### Câu 3 — Throughput có tuyến tính không?
-
-```
-Chỉ số cần xem: http_reqs (RPS — Requests Per Second)
-
-✅ Tốt    : RPS tăng tỉ lệ thuận với VUs (2x VU → ~2x RPS)
-⚠️ Cảnh báo: RPS đạt trần dù VUs vẫn tăng → Bottleneck xuất hiện
-❌ Nghiêm trọng: RPS giảm khi VUs tăng → Hệ thống đang bị quá tải
-```
-
-### Câu 4 — Tài nguyên server có hồi phục không? *(Soak Test)*
-
-```
-Chỉ số cần xem: RAM, CPU, Connection Pool (theo dõi ngoài k6)
-
-✅ Tốt    : RAM/CPU trở về mức nền sau khi dừng test
-⚠️ Cảnh báo: RAM cao nhưng giảm chậm
-❌ Nghiêm trọng: RAM tăng liên tục, không giảm → Memory Leak
+Bước 5 ─ Soak Test (8–72 tiếng)
+    └─ Chạy qua đêm / cuối tuần
+    └─ Theo dõi RAM/CPU song song với k6
 ```
 
 ---
 
-## 📊 5. Bổ sung — Executor nâng cao (Thay thế `stages`)
+## ⚖️ 5. So sánh nhanh để không nhầm lẫn
 
-> 💡 Ngoài cách dùng `stages` đơn giản, k6 còn hỗ trợ **Executors** — cho phép kiểm soát VUs chính xác hơn. Đây là tính năng mạnh mẽ dành cho kịch bản phức tạp.
-
-| Executor | Dùng khi |
-|---|---|
-| `constant-vus` | Giữ cố định N VUs trong X giây |
-| `ramping-vus` | Tương đương `stages` — tăng/giảm VUs theo thời gian |
-| `constant-arrival-rate` | Đảm bảo đúng N request/giây bất kể VUs |
-| `ramping-arrival-rate` | Tăng dần RPS theo thời gian |
-| `per-vu-iterations` | Mỗi VU chạy đúng N vòng lặp |
-
-```javascript
-// Ví dụ: Đảm bảo đúng 100 request/giây (không phụ thuộc vào số VUs)
-export const options = {
-  scenarios: {
-    constant_load: {
-      executor: 'constant-arrival-rate',
-      rate: 100,            // 100 request/giây
-      timeUnit: '1s',
-      duration: '10m',
-      preAllocatedVUs: 50,  // Khởi tạo sẵn 50 VUs
-      maxVUs: 200,          // Tối đa 200 VUs nếu cần
-    },
-  },
-};
-```
-
-> **Tại sao cần `constant-arrival-rate`?** Với `ramping-vus`, mỗi VU gửi request xong mới gửi tiếp — nếu server chậm, RPS tự động giảm. `constant-arrival-rate` đảm bảo RPS cố định dù server chậm, mô phỏng thực tế hơn.
+|                          | Smoke | Load | Stress |     Spike     | Soak |
+| ------------------------ | :---: | :--: | :----: | :-----------: | :--: |
+| VU ít                    |  ✅   |      |        |               |      |
+| VU bình thường           |       |  ✅  |        |               |  ✅  |
+| VU nhiều                 |       |      |   ✅   | ✅ (đột ngột) |      |
+| Thời gian ngắn           |  ✅   |      |        |      ✅       |      |
+| Thời gian dài            |       |      |        |               |  ✅  |
+| Tìm lỗi logic script     |  ✅   |      |        |               |      |
+| Tìm lỗi SLA              |       |  ✅  |        |               |      |
+| Tìm Breaking Point       |       |      |   ✅   |               |      |
+| Tìm Memory Leak          |       |      |        |               |  ✅  |
+| Tìm khả năng tự hồi phục |       |      |   ✅   |      ✅       |      |
 
 ---
 
-## 📝 6. Quy tắc vàng của Phase 3
+## 📝 6. Quy tắc vàng
 
 ```
 1. LUÔN chạy Smoke Test trước
-   └─ Script lỗi logic → dừng, sửa ngay. Không chạy Load Test khi Smoke Test chưa PASS.
+   └─ Mọi bài test khác đều vô nghĩa nếu script có lỗi logic.
 
-2. LUÔN có Ramp-up
-   └─ Tăng tải dần dần cho hệ thống có thời gian warm-up, tránh kết quả bị sai lệch.
+2. LUÔN có Ramp-up và Ramp-down
+   └─ Tránh "sốc tải" khi bắt đầu — quan sát hồi phục khi kết thúc.
 
-3. LUÔN có Ramp-down
-   └─ Quan sát hệ thống hồi phục sau khi giảm tải — đây cũng là dữ liệu quan trọng.
+3. LUÔN có Thresholds (học kỹ ở Bài 3.3)
+   └─ Không có ngưỡng = không có tiêu chí PASS/FAIL = test vô nghĩa.
 
-4. LUÔN đặt Thresholds
-   └─ Không có ngưỡng = không có tiêu chí Pass/Fail = bài test vô nghĩa.
-
-5. Soak Test là bài test "tố cáo" nguy hiểm nhất
-   └─ Các lỗi tiềm ẩn như Memory Leak chỉ lộ diện sau nhiều giờ chạy liên tục.
+4. Không nhầm mục đích từng loại test
+   └─ Stress Test để tìm điểm gãy — không phải để "PASS".
+   └─ Soak Test để tìm Memory Leak — không phải Load Test kéo dài.
 ```
 
 ---
 
-## 🗺️ 7. Lộ trình thực hành khuyến nghị
+## 🔗 7. Kết nối với các bài tiếp theo
 
-```
-Tuần 1 — Nền tảng
-├─ Chạy Smoke Test cho mọi script mới viết
-└─ Chạy Load Test cơ bản với stages 3 giai đoạn (ramp-up / sustain / ramp-down)
-
-Tuần 2 — Nâng cao
-├─ Chạy Stress Test, xác định Breaking Point của hệ thống
-└─ Chạy Spike Test trước các sự kiện lớn
-
-Tuần 3 — Chuyên sâu
-├─ Chạy Soak Test qua đêm, theo dõi RAM/CPU song song
-└─ Thử nghiệm Executors nâng cao (constant-arrival-rate)
-```
+| Bài                           | Nội dung                                                                  | Liên quan                                       |
+| ----------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------- |
+| **3.2 Executors & Scenarios** | Thay `stages` bằng Executors chính xác hơn, chạy nhiều kịch bản song song | Nâng cấp cách cấu hình bài này                  |
+| **3.3 Thresholds**            | Đặt ngưỡng SLO chuyên nghiệp, tích hợp CI/CD PASS/FAIL                    | Làm cho từng loại test trên có tiêu chí rõ ràng |
+| **3.4 Custom Metrics**        | Đo lường logic nghiệp vụ (tỉ lệ checkout thành công...)                   | Bổ sung chỉ số cho Soak/Load Test               |
+| **3.5 Grafana Dashboard**     | Visualize kết quả real-time, xác định Bottleneck                          | Phân tích kết quả các bài test trên             |
 
 ---
 
 ## 📚 8. Nguồn tham khảo
 
-- [k6 Docs: Test Types](https://grafana.com/docs/k6/latest/testing-guides/test-types/)
-- [k6 Docs: Scenarios & Executors](https://grafana.com/docs/k6/latest/using-k6/scenarios/)
-- [k6 Docs: Ramping VUs](https://grafana.com/docs/k6/latest/using-k6/scenarios/executors/ramping-vus/)
-- [k6 Docs: Constant Arrival Rate](https://grafana.com/docs/k6/latest/using-k6/scenarios/executors/constant-arrival-rate/)
-- [Performance Testing Guide — Google SRE Book](https://sre.google/sre-book/testing-reliability/)
+- [k6 Docs: Test Types Overview](https://grafana.com/docs/k6/latest/testing-guides/test-types/)
+- [k6 Docs: Smoke Testing](https://grafana.com/docs/k6/latest/testing-guides/test-types/smoke-testing/)
+- [k6 Docs: Load Testing](https://grafana.com/docs/k6/latest/testing-guides/test-types/load-testing/)
+- [k6 Docs: Stress Testing](https://grafana.com/docs/k6/latest/testing-guides/test-types/stress-testing/)
+- [k6 Docs: Spike Testing](https://grafana.com/docs/k6/latest/testing-guides/test-types/spike-testing/)
+- [k6 Docs: Soak Testing](https://grafana.com/docs/k6/latest/testing-guides/test-types/soak-testing/)
